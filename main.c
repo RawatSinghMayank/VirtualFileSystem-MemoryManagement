@@ -7,15 +7,34 @@ int main()
     char *str1 = NULL;
     int count = 0, ret = 0, fd = 0;
 
+    // Initialize file system
     InitialiseSuperB();
     CreateDILB();
     RestoreData();
     signal(SIGINT, sighandle);
 
+    printf("\n====================================================\n");
+    printf("       VIRTUAL FILE SYSTEM - COMMAND LINE\n");
+    printf("====================================================\n");
+    printf("Type 'help' for available commands\n");
+    printf("Type 'exit' to quit\n");
+    printf("====================================================\n");
+
     while (1)
     {
-        printf("\nTerminal MayankUditAshish $ ");
-        scanf(" %[^'\n']s", str);
+        printf("\nVFS $ ");
+        fflush(stdout);
+        
+        if (fgets(str, sizeof(str), stdin) == NULL) {
+            break;
+        }
+        
+        // Remove newline character
+        str[strcspn(str, "\n")] = 0;
+        
+        if (strlen(str) == 0) {
+            continue;
+        }
 
         count = sscanf(str, "%s %s %s %s", command[0], command[1], command[2], command[3]);
         
@@ -28,27 +47,35 @@ int main()
             else if (strcmp(command[0], "clear") == 0)
             {
                 system("clear");
-                continue;
             }
             else if (strcmp(command[0], "exit") == 0)
             {
+                printf("Exiting Virtual File System...\n");
                 BackupData();
-                printf("\n**Terminate the Terminal Aniket**\n");
+                printf("Goodbye!\n");
                 break;
             }
             else if (strcmp(command[0], "deleteall") == 0)
             {
-                Deleteall();
+                printf("Are you sure you want to delete ALL files? (y/n): ");
+                fflush(stdout);
+                
+                char confirm[10];
+                if (fgets(confirm, sizeof(confirm), stdin) != NULL) {
+                    if (confirm[0] == 'y' || confirm[0] == 'Y') {
+                        Deleteall();
+                    } else {
+                        printf("Operation cancelled.\n");
+                    }
+                }
             }
             else if (strcmp(command[0], "help") == 0)
             {
                 DisplayHelp();
-                continue;
             }
             else
             {
-                printf("ERROR :command not found\n");
-                continue;
+                printf("Error: Command '%s' not found. Type 'help' for available commands.\n", command[0]);
             }
         }
         else if (count == 2)
@@ -56,13 +83,13 @@ int main()
             if (strcmp(command[0], "stat") == 0)
             {
                 ret = stat_file(command[1]);
-                if (ret == -1)
+                if (ret == VFS_ERROR_FILE_NOT_FOUND)
                 {
-                    printf("Invalid parameter");
+                    printf("Error: File '%s' not found\n", command[1]);
                 }
-                else if (ret == -2)
+                else if (ret == VFS_ERROR_INVALID_PARAM)
                 {
-                    printf("File not found");
+                    printf("Error: Invalid filename\n");
                 }
             }
             else if (strcmp(command[0], "cat") == 0)
@@ -76,72 +103,105 @@ int main()
             else if (strcmp(command[0], "read") == 0)
             {
                 fd = findfd(command[1]);
-                if (fd == -2)
+                if (fd < 0)
                 {
-                    printf("File not exist or not exist\n");
+                    printf("Error: File '%s' not found or not open\n", command[1]);
                     continue;
                 }
-                readWholeFile(fd);
+                ret = readWholeFile(fd);
+                if (ret < 0)
+                {
+                    printf("Error: Cannot read file (permission denied)\n");
+                }
             }
             else if (strcmp(command[0], "close") == 0)
             {
                 close_file(command[1]);
-                continue;
             }
             else if (strcmp(command[0], "fstat") == 0)
             {
-                ret = atoi(command[1]);
-                if (UArr[ret].ptrfiletable == NULL)
+                fd = atoi(command[1]);
+                if (!validate_fd(fd))
                 {
-                    printf("File not exist or not open\n");
+                    printf("Error: Invalid file descriptor or file not open\n");
                     continue;
                 }
-                fstat(atoi(command[1]));
+                fstat(fd);
             }
             else if (strcmp(command[0], "rm") == 0)
             {
-                ret = remove_file(command[1]);
-                if (ret == 0)
-                {
-                    printf("***Remove successfully***\n");
-                }
-                else if (ret == -1)
-                {
-                    printf("File not found");
+                printf("Are you sure you want to delete '%s'? (y/n): ", command[1]);
+                fflush(stdout);
+                
+                char confirm[10];
+                if (fgets(confirm, sizeof(confirm), stdin) != NULL) {
+                    if (confirm[0] == 'y' || confirm[0] == 'Y') {
+                        ret = remove_file(command[1]);
+                        if (ret == VFS_SUCCESS)
+                        {
+                            printf("File '%s' deleted successfully\n", command[1]);
+                        }
+                        else if (ret == VFS_ERROR_FILE_NOT_FOUND)
+                        {
+                            printf("Error: File '%s' not found\n", command[1]);
+                        }
+                        else if (ret == VFS_ERROR_FILE_BUSY)
+                        {
+                            printf("Error: File '%s' is currently in use\n", command[1]);
+                        }
+                    } else {
+                        printf("Operation cancelled.\n");
+                    }
                 }
             }
             else if (strcmp(command[0], "write") == 0)
             {
                 fd = findfd(command[1]);
-                if (fd == -2)
+                if (fd < 0)
                 {
-                    printf("File not exist or not exist\n");
+                    printf("Error: File '%s' not found or not open\n", command[1]);
+                    continue;
                 }
-                printf("\nEnter the data :");
-                scanf(" %[^\n]s", arr);
+                
+                printf("Enter data to write (press Enter when done):\n");
+                fflush(stdout);
+                
+                if (fgets(arr, sizeof(arr), stdin) == NULL) {
+                    printf("Error reading input\n");
+                    continue;
+                }
+                
+                // Remove newline
+                arr[strcspn(arr, "\n")] = 0;
+                
                 if (strlen(arr) == 0)
                 {
-                    printf("\nInvalid");
+                    printf("Error: No data entered\n");
+                    continue;
                 }
-                ret = strlen(arr);
-                ret = write_file(fd, arr, ret);
+                
+                ret = write_file(fd, arr, strlen(arr));
                 if (ret > 0)
                 {
-                    printf("\n***Written Sucessfully***\n");
+                    printf("Success: %d bytes written to file\n", ret);
                 }
-                else if (ret == -1)
+                else if (ret == VFS_ERROR_NO_SPACE)
                 {
-                    printf("File size is full");
+                    printf("Error: File system is full\n");
                 }
-                else if (ret == -2)
+                else if (ret == VFS_ERROR_PERMISSION_DENIED)
                 {
-                    printf("No permission for write");
+                    printf("Error: Write permission denied\n");
+                }
+                else
+                {
+                    printf("Error: Write operation failed\n");
                 }
             }
             else
             {
-                printf("ERROR:command not found\n");
-                continue;
+                printf("Error: Command '%s' not found or invalid usage\n", command[0]);
+                printf("Type 'man %s' for help on this command\n", command[0]);
             }
         }
         else if (count == 3)
@@ -151,78 +211,109 @@ int main()
                 ret = CreateFile(command[1], atoi(command[2]));
                 if (ret >= 0)
                 {
-                    printf("***File is successfully created with file descriptor- %d***", ret);
-                    continue;
+                    printf("Success: File '%s' created with FD: %d\n", command[1], ret);
                 }
-                else if (ret == -1)
+                else if (ret == VFS_ERROR_FILE_EXISTS)
                 {
-                    printf("File Already exist");
-                    continue;
+                    printf("Error: File '%s' already exists\n", command[1]);
                 }
-                else if (ret == -2)
+                else if (ret == VFS_ERROR_NO_SPACE)
                 {
-                    printf("Incorrect Parameter");
+                    printf("Error: No space available (max files: %d)\n", MAXINODE);
                 }
-                else if (ret == -3)
+                else if (ret == VFS_ERROR_INVALID_PARAM)
                 {
-                    printf("Inode not available ");
+                    printf("Error: Invalid filename or permission\n");
+                    printf("Permissions: 4=READ, 2=WRITE, 6=READ/WRITE\n");
                 }
-                continue;
             }
             else if (strcmp(command[0], "open") == 0)
             {
                 ret = open_file(command[1], atoi(command[2]));
-                printf("\nOpened file descriptor is %d\n", ret);
+                if (ret >= 0)
+                {
+                    printf("Success: File '%s' opened with FD: %d\n", command[1], ret);
+                }
+                else if (ret == VFS_ERROR_FILE_NOT_FOUND)
+                {
+                    printf("Error: File '%s' not found\n", command[1]);
+                }
+                else if (ret == VFS_ERROR_NO_SPACE)
+                {
+                    printf("Error: No file descriptors available\n");
+                }
+                else if (ret == VFS_ERROR_INVALID_PARAM)
+                {
+                    printf("Error: Invalid filename or mode\n");
+                    printf("Modes: 4=READ, 2=WRITE, 6=READ/WRITE\n");
+                }
             }
             else if (strcmp(command[0], "truncate") == 0)
             {
                 ret = truncate_file(command[1], atoi(command[2]));
-                if (ret == -1)
+                if (ret == VFS_SUCCESS)
                 {
-                    printf("\nInvalid parameter");
-                    continue;
+                    printf("Success: File '%s' truncated to %s bytes\n", 
+                           command[1], command[2]);
                 }
-                else
+                else if (ret == VFS_ERROR_FILE_NOT_FOUND)
                 {
-                    printf("\n***Data deleted from file***");
-                    continue;
+                    printf("Error: File '%s' not found\n", command[1]);
+                }
+                else if (ret == VFS_ERROR_INVALID_PARAM)
+                {
+                    printf("Error: Invalid size (0-%d)\n", MAXFILESIZE);
                 }
             }
             else if (strcmp(command[0], "read") == 0)
             {
                 fd = findfd(command[1]);
-                if (fd == -2)
+                if (fd < 0)
                 {
-                    printf("File not exist or not exist\n");
+                    printf("Error: File '%s' not found or not open\n", command[1]);
                     continue;
                 }
-                ret = atoi(command[2]);
-                str1 = (char *)malloc((sizeof(char) * ret) + 1);
+                
+                int bytes_to_read = atoi(command[2]);
+                if (bytes_to_read <= 0)
+                {
+                    printf("Error: Invalid number of bytes\n");
+                    continue;
+                }
+                
+                str1 = (char *)malloc(bytes_to_read + 1);
                 if (str1 == NULL)
                 {
-                    printf("\nMemory allocation fail\n");
+                    printf("Error: Memory allocation failed\n");
                     continue;
                 }
-                for (int i = 0; i < (sizeof(char) * ret) + 1; i++)
+                
+                memset(str1, 0, bytes_to_read + 1);
+                ret = read_file(fd, str1, bytes_to_read);
+                
+                if (ret > 0)
                 {
-                    str1[i] = '\0';
+                    printf("Data read (%d bytes):\n%s\n", ret, str1);
                 }
-                ret = read_file(fd, str1, ret);
-                printf("%s", str1);
-                if (ret == 0)
+                else if (ret == 0)
                 {
-                    printf("\n***Read successfully***\n");
+                    printf("End of file reached\n");
                 }
-                else if (ret == -1)
+                else if (ret == VFS_ERROR_PERMISSION_DENIED)
                 {
-                    printf("File have not permission to read");
+                    printf("Error: Read permission denied\n");
                 }
-                free(str1); // Don't forget to free allocated memory
+                else
+                {
+                    printf("Error: Read operation failed\n");
+                }
+                
+                free(str1);
             }
             else
             {
-                printf("ERROR:command not found\n");
-                continue;
+                printf("Error: Command '%s' not found or invalid usage\n", command[0]);
+                printf("Type 'man %s' for help on this command\n", command[0]);
             }
         }
         else if (count == 4)
@@ -230,13 +321,33 @@ int main()
             if (strcmp(command[0], "lseek") == 0)
             {
                 ret = lseek_file(command[1], atoi(command[2]), atoi(command[3]));
-                if (ret == 1)
+                if (ret == VFS_SUCCESS)
                 {
-                    printf("\nlseek sucessfully done");
+                    printf("Success: File offset repositioned\n");
+                }
+                else if (ret == VFS_ERROR_FILE_NOT_FOUND)
+                {
+                    printf("Error: File '%s' not found\n", command[1]);
+                }
+                else if (ret == VFS_ERROR_INVALID_PARAM)
+                {
+                    printf("Error: Invalid offset or origin\n");
+                    printf("Origins: 0=START, 1=CURRENT, 2=END\n");
                 }
             }
-            continue;
+            else
+            {
+                printf("Error: Command '%s' not found or invalid usage\n", command[0]);
+                printf("Type 'man %s' for help on this command\n", command[0]);
+            }
+        }
+        else
+        {
+            printf("Error: Too many arguments\n");
         }
     }
+
+    // Cleanup
+    Deleteall(); // This will free all allocated memory
     return 0;
 }
