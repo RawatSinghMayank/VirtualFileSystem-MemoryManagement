@@ -14,7 +14,7 @@ int main()
     signal(SIGINT, sighandle);
 
     printf("\n====================================================\n");
-    printf("       VIRTUAL FILE SYSTEM - COMMAND LINE\n");
+    printf("       VIRTUAL FILE SYSTEM WITH MEMORY MANAGEMENT\n");
     printf("====================================================\n");
     printf("Type 'help' for available commands\n");
     printf("Type 'exit' to quit\n");
@@ -72,6 +72,26 @@ int main()
             else if (strcmp(command[0], "help") == 0)
             {
                 DisplayHelp();
+            }
+            else if (strcmp(command[0], "meminit") == 0)
+            {
+                InitializeMemoryManager();
+            }
+            else if (strcmp(command[0], "memmap") == 0)
+            {
+                DisplayMemoryMapCLI();
+            }
+            else if (strcmp(command[0], "proclist") == 0)
+            {
+                DisplayProcessListCLI();
+            }
+            else if (strcmp(command[0], "memstats") == 0)
+            {
+                MemoryStatsCLI();
+            }
+            else if (strcmp(command[0], "compact") == 0)
+            {
+                CompactMemoryCLI();
             }
             else
             {
@@ -198,6 +218,23 @@ int main()
                     printf("Error: Write operation failed\n");
                 }
             }
+            else if (strcmp(command[0], "killproc") == 0)
+            {
+                int pid = atoi(command[1]);
+                if (pid > 0) {
+                    ret = TerminateProcessCLI(pid);
+                    if (ret < 0) {
+                        printf("Error: Failed to terminate process %d\n", pid);
+                    }
+                } else {
+                    printf("Error: Invalid process ID\n");
+                }
+            }
+            else if (strcmp(command[0], "setalgo") == 0)
+            {
+                int algo = atoi(command[1]);
+                SetAllocAlgorithmCLI(algo);
+            }
             else
             {
                 printf("Error: Command '%s' not found or invalid usage\n", command[0]);
@@ -310,6 +347,20 @@ int main()
                 
                 free(str1);
             }
+            else if (strcmp(command[0], "createproc") == 0)
+            {
+                int memory = atoi(command[2]);
+                if (memory > 0) {
+                    int pid = CreateProcessCLI(command[1], memory);
+                    if (pid > 0) {
+                        printf("Process created with PID: %d\n", pid);
+                    } else {
+                        printf("Failed to create process\n");
+                    }
+                } else {
+                    printf("Error: Invalid memory size\n");
+                }
+            }
             else
             {
                 printf("Error: Command '%s' not found or invalid usage\n", command[0]);
@@ -349,5 +400,29 @@ int main()
 
     // Cleanup
     Deleteall(); // This will free all allocated memory
+    
+    // Cleanup memory manager
+    if (mem_manager != NULL) {
+        PMEMBLOCK current = mem_manager->memory_list;
+        while (current != NULL) {
+            PMEMBLOCK next = current->next;
+            free(current);
+            current = next;
+        }
+        
+        PPROCESS proc_current = mem_manager->process_list;
+        while (proc_current != NULL) {
+            PPROCESS proc_next = proc_current->next;
+            if (proc_current->page_table != NULL) {
+                free(proc_current->page_table);
+            }
+            free(proc_current);
+            proc_current = proc_next;
+        }
+        
+        free(mem_manager);
+        mem_manager = NULL;
+    }
+    
     return 0;
 }
