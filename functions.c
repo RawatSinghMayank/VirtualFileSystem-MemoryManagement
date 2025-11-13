@@ -3,6 +3,7 @@
 PINODE head = NULL;
 UFDT UArr[50];
 SB superblockobj;
+PMEM_MANAGER mem_manager = NULL;
 
 void CreateDILB()
 {
@@ -730,7 +731,7 @@ char* File_ls_gui() {
     strncpy(buffer, "Files in Virtual File System:\n", sizeof(buffer) - 1);
     written = strlen(buffer);
     
-    while (temp != NULL && written < sizeof(buffer) - 100) {
+    while (temp != NULL && written < (int)sizeof(buffer) - 100) {
         if (temp->FileType != 0) {
             int len = snprintf(buffer + written, sizeof(buffer) - written, 
                              "• %s (%d bytes)\n", temp->Fname, temp->ActualFileSize);
