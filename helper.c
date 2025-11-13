@@ -5,6 +5,7 @@ void DisplayHelp()
     printf("\n====================================================\n");
     printf("            VIRTUAL FILE SYSTEM HELP MENU\n");
     printf("====================================================\n");
+    printf("File System Commands:\n");
     printf("create  : Create a new file with specified permissions\n");
     printf("open    : Open an existing file\n");
     printf("close   : Close an opened file\n");
@@ -18,6 +19,18 @@ void DisplayHelp()
     printf("cat     : Display file content without opening\n");
     printf("rm      : Remove a file\n");
     printf("deleteall: Delete all files\n");
+    
+    printf("\nMemory Management Commands:\n");
+    printf("meminit   : Initialize memory manager\n");
+    printf("createproc: Create a new process <name> <memory>\n");
+    printf("killproc  : Terminate process <pid>\n");
+    printf("memmap    : Display memory map\n");
+    printf("proclist  : Display process list\n");
+    printf("setalgo   : Set allocation algorithm <0=FirstFit,1=BestFit,2=WorstFit>\n");
+    printf("memstats  : Display memory statistics\n");
+    printf("compact   : Compact memory\n");
+    
+    printf("\nUtility Commands:\n");
     printf("clear   : Clear the terminal screen\n");
     printf("help    : Display this help menu\n");
     printf("man     : Display manual for a command\n");
@@ -53,205 +66,44 @@ void DisplayManpage(char *str)
                "\topen data.txt 6\n");
         printf("====================================================\n");
     }
-    else if (strcasecmp(str, "close") == 0)
+    else if (strcasecmp(str, "meminit") == 0)
     {
         printf("\n====================================================\n");
         printf("NAME\n"
-               "\tclose - close a file\n"
+               "\tmeminit - initialize memory manager\n"
                "\nSYNOPSIS\n"
-               "\tclose FILE_NAME\n"
+               "\tmeminit\n"
                "\nDESCRIPTION\n"
-               "\tClose an opened file and free associated resources.\n"
+               "\tInitialize the memory management system with 1MB total memory.\n"
                "\nEXAMPLES\n"
-               "\tclose myfile\n");
+               "\tmeminit\n");
         printf("====================================================\n");
     }
-    else if (strcasecmp(str, "read") == 0)
+    else if (strcasecmp(str, "createproc") == 0)
     {
         printf("\n====================================================\n");
         printf("NAME\n"
-               "\tread - read from a file\n"
+               "\tcreateproc - create a new process\n"
                "\nSYNOPSIS\n"
-               "\tread FILE_NAME [BYTES]\n"
+               "\tcreateproc PROCESS_NAME MEMORY_SIZE\n"
                "\nDESCRIPTION\n"
-               "\tRead data from a file. If BYTES is not specified,\n"
-               "\treads the entire file content.\n"
+               "\tCreate a new process with specified memory requirements.\n"
                "\nEXAMPLES\n"
-               "\tread myfile        # Read entire file\n"
-               "\tread data.txt 100  # Read 100 bytes\n");
+               "\tcreateproc browser 65536\n"
+               "\tcreateproc editor 32768\n");
         printf("====================================================\n");
     }
-    else if (strcasecmp(str, "write") == 0)
+    else if (strcasecmp(str, "memmap") == 0)
     {
         printf("\n====================================================\n");
         printf("NAME\n"
-               "\twrite - write to a file\n"
+               "\tmemmap - display memory map\n"
                "\nSYNOPSIS\n"
-               "\twrite FILE_NAME\n"
+               "\tmemmap\n"
                "\nDESCRIPTION\n"
-               "\tWrite data to a file. You will be prompted for input.\n"
+               "\tDisplay current memory allocation map showing used and free blocks.\n"
                "\nEXAMPLES\n"
-               "\twrite myfile\n");
-        printf("====================================================\n");
-    }
-    else if (strcasecmp(str, "ls") == 0)
-    {
-        printf("\n====================================================\n");
-        printf("NAME\n"
-               "\tls - list files\n"
-               "\nSYNOPSIS\n"
-               "\tls\n"
-               "\nDESCRIPTION\n"
-               "\tList all files in the virtual file system with their sizes.\n"
-               "\nEXAMPLES\n"
-               "\tls\n");
-        printf("====================================================\n");
-    }
-    else if (strcasecmp(str, "stat") == 0)
-    {
-        printf("\n====================================================\n");
-        printf("NAME\n"
-               "\tstat - display file statistics\n"
-               "\nSYNOPSIS\n"
-               "\tstat FILE_NAME\n"
-               "\nDESCRIPTION\n"
-               "\tDisplay detailed information about a file including\n"
-               "\tsize, permissions, timestamps, and metadata.\n"
-               "\nEXAMPLES\n"
-               "\tstat myfile\n");
-        printf("====================================================\n");
-    }
-    else if (strcasecmp(str, "fstat") == 0)
-    {
-        printf("\n====================================================\n");
-        printf("NAME\n"
-               "\tfstat - display file descriptor statistics\n"
-               "\nSYNOPSIS\n"
-               "\tfstat FILE_DESCRIPTOR\n"
-               "\nDESCRIPTION\n"
-               "\tDisplay information about an opened file using its\n"
-               "\tfile descriptor.\n"
-               "\nEXAMPLES\n"
-               "\tfstat 3\n");
-        printf("====================================================\n");
-    }
-    else if (strcasecmp(str, "truncate") == 0)
-    {
-        printf("\n====================================================\n");
-        printf("NAME\n"
-               "\ttruncate - change file size\n"
-               "\nSYNOPSIS\n"
-               "\ttruncate FILE_NAME SIZE\n"
-               "\nDESCRIPTION\n"
-               "\tShrink or extend a file to the specified size.\n"
-               "\tIf extending, new space is filled with spaces.\n"
-               "\nEXAMPLES\n"
-               "\ttruncate myfile 500   # Set file size to 500 bytes\n"
-               "\ttruncate data.txt 0   # Empty the file\n");
-        printf("====================================================\n");
-    }
-    else if (strcasecmp(str, "create") == 0)
-    {
-        printf("\n====================================================\n");
-        printf("NAME\n"
-               "\tcreate - create a new file\n"
-               "\nSYNOPSIS\n"
-               "\tcreate FILE_NAME PERMISSION\n"
-               "\nDESCRIPTION\n"
-               "\tCreate a new file with specified permissions.\n"
-               "\nPERMISSIONS\n"
-               "\t4 or READ    - Read-only access\n"
-               "\t2 or WRITE   - Write-only access\n"
-               "\t6 or READWRITE - Read-write access\n"
-               "\nEXAMPLES\n"
-               "\tcreate myfile 6\n"
-               "\tcreate config.txt 4\n");
-        printf("====================================================\n");
-    }
-    else if (strcasecmp(str, "lseek") == 0)
-    {
-        printf("\n====================================================\n");
-        printf("NAME\n"
-               "\tlseek - reposition file offset\n"
-               "\nSYNOPSIS\n"
-               "\tlseek FILE_NAME OFFSET ORIGIN\n"
-               "\nDESCRIPTION\n"
-               "\tReposition the read/write file offset.\n"
-               "\nORIGINS\n"
-               "\t0 or START   - Offset from beginning\n"
-               "\t1 or CURRENT - Offset from current position\n"
-               "\t2 or END     - Offset from end\n"
-               "\nEXAMPLES\n"
-               "\tlseek myfile 100 0   # Seek to byte 100 from start\n"
-               "\tlseek data.txt -50 1 # Seek back 50 bytes from current\n");
-        printf("====================================================\n");
-    }
-    else if (strcasecmp(str, "rm") == 0)
-    {
-        printf("\n====================================================\n");
-        printf("NAME\n"
-               "\trm - remove a file\n"
-               "\nSYNOPSIS\n"
-               "\trm FILE_NAME\n"
-               "\nDESCRIPTION\n"
-               "\tPermanently delete a file from the system.\n"
-               "\nEXAMPLES\n"
-               "\trm myfile\n"
-               "\trm old_data.txt\n");
-        printf("====================================================\n");
-    }
-    else if (strcasecmp(str, "exit") == 0)
-    {
-        printf("\n====================================================\n");
-        printf("NAME\n"
-               "\texit - terminate the application\n"
-               "\nSYNOPSIS\n"
-               "\texit\n"
-               "\nDESCRIPTION\n"
-               "\tExit the virtual file system application.\n"
-               "\tAll data is automatically backed up.\n");
-        printf("====================================================\n");
-    }
-    else if (strcasecmp(str, "cat") == 0)
-    {
-        printf("\n====================================================\n");
-        printf("NAME\n"
-               "\tcat - display file content\n"
-               "\nSYNOPSIS\n"
-               "\tcat FILE_NAME\n"
-               "\nDESCRIPTION\n"
-               "\tDisplay the content of a file without opening it.\n"
-               "\nEXAMPLES\n"
-               "\tcat myfile\n"
-               "\tcat config.txt\n");
-        printf("====================================================\n");
-    }
-    else if (strcasecmp(str, "man") == 0)
-    {
-        printf("\n====================================================\n");
-        printf("NAME\n"
-               "\tman - display command manual\n"
-               "\nSYNOPSIS\n"
-               "\tman COMMAND\n"
-               "\nDESCRIPTION\n"
-               "\tDisplay detailed manual page for a command.\n"
-               "\nEXAMPLES\n"
-               "\tman create\n"
-               "\tman open\n");
-        printf("====================================================\n");
-    }
-    else if (strcasecmp(str, "deleteall") == 0)
-    {
-        printf("\n====================================================\n");
-        printf("NAME\n"
-               "\tdeleteall - delete all files\n"
-               "\nSYNOPSIS\n"
-               "\tdeleteall\n"
-               "\nDESCRIPTION\n"
-               "\tDelete all files in the virtual file system.\n"
-               "\tThis operation cannot be undone.\n"
-               "\nWARNING\n"
-               "\tThis will permanently remove all files!\n");
+               "\tmemmap\n");
         printf("====================================================\n");
     }
     else
@@ -411,10 +263,36 @@ void RestoreData()
     printf("Data restored successfully from backup.\n");
 }
 
-void sighandle(int s)
+void sighandle(int s __attribute__((unused)))
 {
     printf("\n\nReceived interrupt signal. Backing up data...\n");
     BackupData();
+    
+    // Cleanup memory manager
+    if (mem_manager != NULL) {
+        // Free all memory blocks
+        PMEMBLOCK current = mem_manager->memory_list;
+        while (current != NULL) {
+            PMEMBLOCK next = current->next;
+            free(current);
+            current = next;
+        }
+        
+        // Free all processes
+        PPROCESS proc_current = mem_manager->process_list;
+        while (proc_current != NULL) {
+            PPROCESS proc_next = proc_current->next;
+            if (proc_current->page_table != NULL) {
+                free(proc_current->page_table);
+            }
+            free(proc_current);
+            proc_current = proc_next;
+        }
+        
+        free(mem_manager);
+        mem_manager = NULL;
+    }
+    
     printf("Virtual File System terminated safely.\n");
     exit(0);
 }
