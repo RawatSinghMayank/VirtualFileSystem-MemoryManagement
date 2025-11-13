@@ -24,6 +24,12 @@
 #define CURRENT 1
 #define END 2
 
+// Memory management constants
+#define TOTAL_MEMORY 1024 * 1024  // 1MB total memory
+#define PAGE_SIZE 4096           // 4KB page size
+#define MAX_PROCESSES 10
+#define MAX_PAGES (TOTAL_MEMORY / PAGE_SIZE)
+
 // Error codes
 typedef enum {
     VFS_SUCCESS = 0,
@@ -35,6 +41,13 @@ typedef enum {
     VFS_ERROR_INVALID_FD = -6,
     VFS_ERROR_FILE_BUSY = -7
 } VFS_RESULT;
+
+// Memory allocation algorithms
+typedef enum {
+    FIRST_FIT = 0,
+    BEST_FIT = 1,
+    WORST_FIT = 2
+} ALLOC_ALGO;
 
 // Data structure for the Inode
 typedef struct inode
@@ -77,10 +90,43 @@ typedef struct SuperB
     int FInode;
 } SB, *PSB;
 
+// Process Control Block
+typedef struct Process {
+    int pid;
+    char name[50];
+    int memory_required;
+    int pages_allocated;
+    int *page_table;
+    int state; // 0: terminated, 1: running, 2: waiting
+    struct Process *next;
+} PROCESS, *PPROCESS;
+
+// Memory Block
+typedef struct MemoryBlock {
+    int start_address;
+    int size;
+    int is_free;
+    int pid; // owner process ID
+    struct MemoryBlock *next;
+} MEMBLOCK, *PMEMBLOCK;
+
+// Memory Manager
+typedef struct MemoryManager {
+    int total_memory;
+    int free_memory;
+    int used_memory;
+    ALLOC_ALGO current_algorithm;
+    PMEMBLOCK memory_list;
+    PPROCESS process_list;
+    int page_faults;
+    int next_pid;
+} MEM_MANAGER, *PMEM_MANAGER;
+
 // Global variables declaration
 extern PINODE head;
 extern UFDT UArr[50];
 extern SB superblockobj;
+extern PMEM_MANAGER mem_manager;
 
 // Core file system functions
 void CreateDILB();
@@ -117,5 +163,31 @@ char* cat_file_gui(char *name);
 int validate_fd(int fd);
 int validate_filename(const char *name);
 int validate_permission(int permission);
+
+// Memory Management Functions
+void InitializeMemoryManager();
+int CreateProcess(char *name, int memory_required);
+int TerminateProcess(int pid);
+int AllocateMemory(int pid, int size, ALLOC_ALGO algo);
+int DeallocateMemory(int pid);
+void DisplayMemoryMap();
+void DisplayProcessList();
+void SetAllocationAlgorithm(ALLOC_ALGO algo);
+void MemoryStats();
+void CompactMemory();
+
+// CLI wrapper functions
+int CreateProcessCLI(char *name, int memory);
+int TerminateProcessCLI(int pid);
+void DisplayMemoryMapCLI();
+void DisplayProcessListCLI();
+void SetAllocAlgorithmCLI(int algo);
+void MemoryStatsCLI();
+void CompactMemoryCLI();
+
+// GUI memory functions
+char* DisplayMemoryMapGUI();
+char* DisplayProcessListGUI();
+char* MemoryStatsGUI();
 
 #endif
