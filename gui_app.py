@@ -7,8 +7,8 @@ import sys
 class VFSApp(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Virtual File System - GUI")
-        self.geometry("1000x700")
+        self.title("Virtual File System - GUI with Memory Management")
+        self.geometry("1200x800")
         self.configure(bg='#f0f0f0')
         
         # Load the C library
@@ -18,25 +18,22 @@ class VFSApp(tk.Tk):
         # Initialize the C backend
         self.initialize_vfs()
         
-        self.create_widgets()
-        self.refresh_file_list()
+        # Create status bar FIRST
+        self.status_bar = ttk.Label(self, text="Virtual File System Ready", relief=tk.SUNKEN, anchor=tk.W)
+        self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
+        
+        self.create_notebook()
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         
     def load_library(self):
         """Load the C shared library"""
-        if os.name == 'nt':
-            lib_name = 'libvfs.dll'
-        else:
-            lib_name = './libvfs.so'
-            
         try:
-            self.libvfs = ctypes.CDLL(lib_name)
+            self.libvfs = ctypes.CDLL('./libvfs.so')
             self.setup_function_prototypes()
             return True
         except OSError as e:
             error_msg = f"Failed to load C library: {e}\n\n"
-            error_msg += "Please compile the C code first:\n"
-            error_msg += "gcc -shared -fPIC -o libvfs.so functions.c helper.c\n"
+            error_msg += "Please make sure libvfs.so is in the current directory.\n"
             messagebox.showerror("Library Error", error_msg)
             sys.exit(1)
             
@@ -77,6 +74,21 @@ class VFSApp(tk.Tk):
         self.libvfs.cat_file_gui.argtypes = [ctypes.c_char_p]
         self.libvfs.cat_file_gui.restype = ctypes.c_char_p
         
+        # Memory management functions
+        self.libvfs.InitializeMemoryManager.restype = None
+        self.libvfs.CreateProcessCLI.argtypes = [ctypes.c_char_p, ctypes.c_int]
+        self.libvfs.CreateProcessCLI.restype = ctypes.c_int
+        self.libvfs.TerminateProcessCLI.argtypes = [ctypes.c_int]
+        self.libvfs.TerminateProcessCLI.restype = ctypes.c_int
+        self.libvfs.SetAllocAlgorithmCLI.argtypes = [ctypes.c_int]
+        self.libvfs.SetAllocAlgorithmCLI.restype = None
+        self.libvfs.CompactMemoryCLI.restype = None
+        
+        # GUI memory functions
+        self.libvfs.DisplayMemoryMapGUI.restype = ctypes.c_char_p
+        self.libvfs.DisplayProcessListGUI.restype = ctypes.c_char_p
+        self.libvfs.MemoryStatsGUI.restype = ctypes.c_char_p
+        
         # Utility functions
         self.libvfs.findfd.argtypes = [ctypes.c_char_p]
         self.libvfs.findfd.restype = ctypes.c_int
@@ -87,14 +99,25 @@ class VFSApp(tk.Tk):
         self.libvfs.CreateDILB()
         self.libvfs.RestoreData()
         
-    def create_widgets(self):
-        """Create the GUI widgets"""
-        # Main frame
-        main_frame = ttk.Frame(self, padding="10")
-        main_frame.pack(fill=tk.BOTH, expand=True)
+    def create_notebook(self):
+        """Create notebook with tabs"""
+        self.notebook = ttk.Notebook(self)
+        self.notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        self.create_file_tab()
+        self.create_memory_tab()
+        
+        # Initial refresh
+        self.refresh_file_list()
+        self.refresh_memory_map()
+        
+    def create_file_tab(self):
+        """Create file system tab"""
+        file_frame = ttk.Frame(self.notebook)
+        self.notebook.add(file_frame, text="File System")
         
         # Left panel - File list
-        left_frame = ttk.LabelFrame(main_frame, text="File System Contents", padding="10")
+        left_frame = ttk.LabelFrame(file_frame, text="File System Contents", padding="10")
         left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
         
         self.file_list_text = scrolledtext.ScrolledText(
@@ -107,7 +130,7 @@ class VFSApp(tk.Tk):
         self.file_list_text.pack(fill=tk.BOTH, expand=True)
         
         # Right panel - Controls
-        right_frame = ttk.LabelFrame(main_frame, text="File Operations", padding="10")
+        right_frame = ttk.LabelFrame(file_frame, text="File Operations", padding="10")
         right_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=5, pady=5)
         
         # File information section
@@ -155,9 +178,69 @@ class VFSApp(tk.Tk):
         ttk.Button(btn_frame, text="Refresh List", command=self.refresh_file_list).pack(fill=tk.X, pady=2)
         ttk.Button(btn_frame, text="Backup Data", command=self.backup_data).pack(fill=tk.X, pady=2)
         
-        # Status bar
-        self.status_bar = ttk.Label(self, text="Virtual File System Ready", relief=tk.SUNKEN, anchor=tk.W)
-        self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
+    def create_memory_tab(self):
+        """Create memory management tab"""
+        memory_frame = ttk.Frame(self.notebook)
+        self.notebook.add(memory_frame, text="Memory Management")
+        
+        # Left panel - Memory visualization
+        left_mem = ttk.LabelFrame(memory_frame, text="Memory Map", padding="10")
+        left_mem.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        self.memory_text = scrolledtext.ScrolledText(
+            left_mem, wrap=tk.WORD, width=60, height=20,
+            font=('Courier', 9)
+        )
+        self.memory_text.pack(fill=tk.BOTH, expand=True)
+        
+        # Right panel - Controls
+        right_mem = ttk.LabelFrame(memory_frame, text="Memory Operations", padding="10")
+        right_mem.pack(side=tk.RIGHT, fill=tk.Y, padx=5, pady=5)
+        
+        # Process creation
+        ttk.Label(right_mem, text="Process Name:").pack(anchor=tk.W, pady=(0, 5))
+        self.proc_name_entry = ttk.Entry(right_mem, width=20)
+        self.proc_name_entry.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Label(right_mem, text="Memory Required (bytes):").pack(anchor=tk.W, pady=(0, 5))
+        self.mem_req_entry = ttk.Entry(right_mem, width=20)
+        self.mem_req_entry.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Button(right_mem, text="Create Process", 
+                   command=self.create_process).pack(fill=tk.X, pady=2)
+        
+        ttk.Label(right_mem, text="Process ID to Terminate:").pack(anchor=tk.W, pady=(20, 5))
+        self.proc_kill_entry = ttk.Entry(right_mem, width=20)
+        self.proc_kill_entry.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Button(right_mem, text="Terminate Process", 
+                   command=self.terminate_process).pack(fill=tk.X, pady=2)
+        
+        ttk.Separator(right_mem, orient='horizontal').pack(fill=tk.X, pady=10)
+        
+        # Algorithm selection
+        ttk.Label(right_mem, text="Allocation Algorithm:").pack(anchor=tk.W)
+        self.algo_var = tk.StringVar(value="First Fit")
+        algo_combo = ttk.Combobox(right_mem, textvariable=self.algo_var,
+                                 values=["First Fit", "Best Fit", "Worst Fit"])
+        algo_combo.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Button(right_mem, text="Set Algorithm", 
+                   command=self.set_algorithm).pack(fill=tk.X, pady=2)
+        
+        ttk.Separator(right_mem, orient='horizontal').pack(fill=tk.X, pady=10)
+        
+        # Information buttons
+        ttk.Button(right_mem, text="Initialize Memory", 
+                   command=self.initialize_memory).pack(fill=tk.X, pady=2)
+        ttk.Button(right_mem, text="Refresh Memory Map", 
+                   command=self.refresh_memory_map).pack(fill=tk.X, pady=2)
+        ttk.Button(right_mem, text="Show Process List", 
+                   command=self.show_process_list).pack(fill=tk.X, pady=2)
+        ttk.Button(right_mem, text="Memory Statistics", 
+                   command=self.show_memory_stats).pack(fill=tk.X, pady=2)
+        ttk.Button(right_mem, text="Compact Memory", 
+                   command=self.compact_memory).pack(fill=tk.X, pady=2)
         
     def on_closing(self):
         """Handle application closing"""
@@ -169,6 +252,7 @@ class VFSApp(tk.Tk):
         """Update status bar"""
         self.status_bar.config(text=message)
         
+    # File System Methods
     def refresh_file_list(self):
         """Refresh the file list display"""
         self.file_list_text.delete('1.0', tk.END)
@@ -391,6 +475,104 @@ class VFSApp(tk.Tk):
         self.libvfs.BackupData()
         messagebox.showinfo("Success", "All data backed up successfully")
         self.update_status("Data backed up")
+        
+    # Memory Management Methods
+    def initialize_memory(self):
+        """Initialize memory manager"""
+        self.libvfs.InitializeMemoryManager()
+        self.refresh_memory_map()
+        self.update_status("Memory manager initialized")
+        messagebox.showinfo("Success", "Memory Manager Initialized with 1MB total memory")
+        
+    def create_process(self):
+        """Create a new process"""
+        proc_name = self.proc_name_entry.get().strip()
+        mem_str = self.mem_req_entry.get().strip()
+        
+        if not proc_name:
+            messagebox.showerror("Error", "Please enter a process name")
+            return
+            
+        if not mem_str.isdigit():
+            messagebox.showerror("Error", "Please enter valid memory size")
+            return
+            
+        memory = int(mem_str)
+        if memory <= 0:
+            messagebox.showerror("Error", "Memory size must be positive")
+            return
+            
+        pid = self.libvfs.CreateProcessCLI(proc_name.encode('utf-8'), memory)
+        if pid > 0:
+            messagebox.showinfo("Success", f"Process '{proc_name}' created with PID: {pid}")
+            self.refresh_memory_map()
+            self.update_status(f"Process '{proc_name}' created with PID {pid}")
+        else:
+            messagebox.showerror("Error", "Failed to create process (not enough memory?)")
+            
+    def terminate_process(self):
+        """Terminate a process"""
+        pid_str = self.proc_kill_entry.get().strip()
+        
+        if not pid_str.isdigit():
+            messagebox.showerror("Error", "Please enter a valid process ID")
+            return
+            
+        pid = int(pid_str)
+        ret = self.libvfs.TerminateProcessCLI(pid)
+        if ret > 0:
+            messagebox.showinfo("Success", f"Process {pid} terminated, freed {ret} bytes")
+            self.refresh_memory_map()
+            self.update_status(f"Process {pid} terminated")
+        else:
+            messagebox.showerror("Error", f"Failed to terminate process {pid}")
+            
+    def set_algorithm(self):
+        """Set allocation algorithm"""
+        algo_map = {
+            "First Fit": 0,
+            "Best Fit": 1,
+            "Worst Fit": 2
+        }
+        
+        algo_name = self.algo_var.get()
+        if algo_name in algo_map:
+            self.libvfs.SetAllocAlgorithmCLI(algo_map[algo_name])
+            self.refresh_memory_map()
+            self.update_status(f"Algorithm set to {algo_name}")
+        else:
+            messagebox.showerror("Error", "Please select a valid algorithm")
+            
+    def refresh_memory_map(self):
+        """Refresh memory map display"""
+        self.memory_text.delete('1.0', tk.END)
+        mem_str_ptr = self.libvfs.DisplayMemoryMapGUI()
+        if mem_str_ptr:
+            mem_str = ctypes.string_at(mem_str_ptr).decode('utf-8')
+            self.memory_text.insert(tk.END, mem_str)
+        self.update_status("Memory map refreshed")
+        
+    def show_process_list(self):
+        """Show process list in dialog"""
+        proc_str_ptr = self.libvfs.DisplayProcessListGUI()
+        if proc_str_ptr:
+            proc_str = ctypes.string_at(proc_str_ptr).decode('utf-8')
+            self.show_content_dialog("Process List", proc_str)
+        self.update_status("Process list displayed")
+        
+    def show_memory_stats(self):
+        """Show memory statistics"""
+        stats_ptr = self.libvfs.MemoryStatsGUI()
+        if stats_ptr:
+            stats_str = ctypes.string_at(stats_ptr).decode('utf-8')
+            self.show_content_dialog("Memory Statistics", stats_str)
+        self.update_status("Memory statistics displayed")
+        
+    def compact_memory(self):
+        """Compact memory"""
+        self.libvfs.CompactMemoryCLI()
+        self.refresh_memory_map()
+        self.update_status("Memory compaction completed")
         
     def show_content_dialog(self, title, content):
         """Show content in a scrollable dialog"""
